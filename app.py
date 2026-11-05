@@ -148,12 +148,7 @@ try:
   start_date = st.sidebar.date_input("Start Date", value=min_date)
   end_date = st.sidebar.date_input("End Date", value=max_date)
 
-  if "applied" not in st.session_state:
-    st.session_state.applied = True
-
-  if st.sidebar.button("✅ OK - Apply Report", type="primary"):
-    st.session_state.applied = True
-
+  # Lọc dữ liệu trực tiếp theo thời gian thực không cần nút bấm
   df_filtered = df_processed.copy()
   if selected_sales != "All":
     df_filtered = df_filtered[df_filtered["Sales Member"] == selected_sales]
