@@ -7,13 +7,13 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 import streamlit as st
 
 st.set_page_config(
-    page_title="Sales Meeting Desktop App",
+    page_title="Meeting Analysis App",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-st.title("📊 Sales Meeting Frequency Desktop App")
-st.markdown("Ứng dụng quản lý và phân tích tần số Meeting theo Stage dự án")
+st.title("📊 Meeting Analysis App")
+st.markdown("Management and tracking application for sales meeting frequency by project stage")
 
 STAGES = [
     "Chance",
@@ -115,15 +115,13 @@ try:
       "20261029_Activity Detail.xlsx", "DIDW_12T (38).xlsx"
   )
 
-  st.sidebar.header("🔍 Bộ lọc (Filters)")
+  st.sidebar.header("🔍 Filters")
 
-  # 1. Chọn Sales Member
   sales_list = ["All"] + sorted(
       df_processed["Sales Member"].dropna().unique().tolist()
   )
   selected_sales = st.sidebar.selectbox("Sales Member", sales_list)
 
-  # Tự động lọc Region tương ứng ngay khi Sales thay đổi
   df_temp_region = df_processed.copy()
   if selected_sales != "All":
     df_temp_region = df_temp_region[
@@ -134,7 +132,6 @@ try:
   )
   selected_region = st.sidebar.selectbox("Region", region_list)
 
-  # Tự động lọc Project Name tương ứng theo Sales & Region
   df_temp_pjt = df_temp_region.copy()
   if selected_region != "All":
     df_temp_pjt = df_temp_pjt[df_temp_pjt["Region"] == selected_region]
@@ -147,17 +144,16 @@ try:
   max_date = df_processed["Date"].max().date()
 
   st.sidebar.markdown("---")
-  st.sidebar.markdown("📅 **Khoảng thời gian (Period)**")
-  start_date = st.sidebar.date_input("Từ ngày", value=min_date)
-  end_date = st.sidebar.date_input("Đến ngày", value=max_date)
+  st.sidebar.markdown("📅 **Period**")
+  start_date = st.sidebar.date_input("Start Date", value=min_date)
+  end_date = st.sidebar.date_input("End Date", value=max_date)
 
   if "applied" not in st.session_state:
     st.session_state.applied = True
 
-  if st.sidebar.button("✅ OK - Áp dụng Báo cáo", type="primary"):
+  if st.sidebar.button("✅ OK - Apply Report", type="primary"):
     st.session_state.applied = True
 
-  # Lọc dữ liệu chính thức
   df_filtered = df_processed.copy()
   if selected_sales != "All":
     df_filtered = df_filtered[df_filtered["Sales Member"] == selected_sales]
@@ -174,12 +170,12 @@ try:
 
   # --- MAIN DASHBOARD ---
   col1, col2, col3 = st.columns(3)
-  col1.metric("Tổng số Meeting đã lọc", len(df_filtered))
-  col2.metric("Số lượng Sales tham gia", df_filtered["Sales Member"].nunique())
-  col3.metric("Số lượng Dự án", df_filtered["Project Name"].nunique())
+  col1.metric("Total Filtered Meetings", len(df_filtered))
+  col2.metric("Participating Sales", df_filtered["Sales Member"].nunique())
+  col3.metric("Total Projects", df_filtered["Project Name"].nunique())
 
   st.markdown("---")
-  st.subheader("📈 Biểu đồ Tần số Meeting theo Stage dự án")
+  st.subheader("📈 Meeting Frequency by Project Stage")
 
   categories_order = STAGES + ["Non-Relevant"]
   stage_counts = (
@@ -201,18 +197,17 @@ try:
   fig.update_traces(textposition="outside")
   fig.update_layout(
       xaxis_title="Project Stage",
-      yaxis_title="Số lượng Meeting",
+      yaxis_title="Meeting Count",
       showlegend=False,
   )
   st.plotly_chart(fig, use_container_width=True)
 
-  st.subheader("📋 Bảng Dữ liệu Chi tiết")
+  st.subheader("📋 Detailed Data Table")
   st.dataframe(df_filtered, use_container_width=True)
 
-  # --- XUẤT FILE EXCEL ĐA SHEET KÈM BIỂU ĐỒ VÀ RAW DATA ---
+  # --- EXCEL EXPORT ---
   wb = openpyxl.Workbook()
 
-  # Sheet 1: Summary & Chart (Bảng tổng hợp + Biểu đồ cột)
   ws_summary = wb.active
   ws_summary.title = "Summary & Chart"
 
@@ -223,7 +218,7 @@ try:
   chart.type = "col"
   chart.style = 10
   chart.title = "Sales Meeting Frequency by Project Stage"
-  chart.y_axis.title = "Số lượng Meeting"
+  chart.y_axis.title = "Meeting Count"
   chart.x_axis.title = "Project Stage"
 
   data_ref = Reference(
@@ -241,7 +236,6 @@ try:
   chart.width = 20
   ws_summary.add_chart(chart, "D2")
 
-  # Sheet 2: Filtered Meeting Details (Chi tiết meeting đã lọc)
   ws_details = wb.create_sheet(title="Filtered Meeting Details")
   df_details_export = df_filtered.copy()
   if "Date" in df_details_export.columns:
@@ -250,7 +244,6 @@ try:
   for r in dataframe_to_rows(df_details_export, index=False, header=True):
     ws_details.append(r)
 
-  # Sheet 3: Original Raw Data (Dữ liệu gốc Activity Detail đầy đủ)
   ws_raw = wb.create_sheet(title="Original Raw Data")
   df_raw_export = pd.read_excel("20261029_Activity Detail.xlsx")
   if "Date" in df_raw_export.columns:
@@ -264,11 +257,11 @@ try:
   excel_data = output.getvalue()
 
   st.download_button(
-      label="📥 Tải Báo Cáo Excel Hoàn Chỉnh (.xlsx)",
+      label="📥 Download Complete Report (.xlsx)",
       data=excel_data,
-      file_name="Sales_Meeting_Report_Complete.xlsx",
+      file_name="Meeting_Analysis_Report.xlsx",
       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   )
 
 except Exception as e:
-  st.error(f"Lỗi khi đọc file dữ liệu: {e}")
+  st.error(f"Error reading data files: {e}")
