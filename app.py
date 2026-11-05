@@ -1,6 +1,9 @@
 import io
 import pandas as pd
 import plotly.express as px
+import openpyxl
+from openpyxl.chart import BarChart, Reference
+from openpyxl.utils.dataframe import dataframe_to_rows
 import streamlit as st
 
 st.set_page_config(
@@ -148,7 +151,6 @@ try:
   start_date = st.sidebar.date_input("Từ ngày", value=min_date)
   end_date = st.sidebar.date_input("Đến ngày", value=max_date)
 
-  # 2. Giữ nút OK bằng st.button thay vì st.form để cho phép cập nhật danh sách động
   if "applied" not in st.session_state:
     st.session_state.applied = True
 
@@ -207,16 +209,64 @@ try:
   st.subheader("📋 Bảng Dữ liệu Chi tiết")
   st.dataframe(df_filtered, use_container_width=True)
 
+  # --- XUẤT FILE EXCEL ĐA SHEET KÈM BIỂU ĐỒ VÀ RAW DATA ---
+  wb = openpyxl.Workbook()
+
+  # Sheet 1: Summary & Chart (Bảng tổng hợp + Biểu đồ cột)
+  ws_summary = wb.active
+  ws_summary.title = "Summary & Chart"
+
+  for r in dataframe_to_rows(stage_counts, index=False, header=True):
+    ws_summary.append(r)
+
+  chart = BarChart()
+  chart.type = "col"
+  chart.style = 10
+  chart.title = "Sales Meeting Frequency by Project Stage"
+  chart.y_axis.title = "Số lượng Meeting"
+  chart.x_axis.title = "Project Stage"
+
+  data_ref = Reference(
+      ws_summary, min_col=2, min_row=1, max_row=len(stage_counts) + 1
+  )
+  cats_ref = Reference(
+      ws_summary, min_col=1, min_row=2, max_row=len(stage_counts) + 1
+  )
+
+  chart.add_data(data_ref, titles_from_data=True)
+  chart.set_categories(cats_ref)
+  chart.legend = None
+
+  chart.height = 12
+  chart.width = 20
+  ws_summary.add_chart(chart, "D2")
+
+  # Sheet 2: Filtered Meeting Details (Chi tiết meeting đã lọc)
+  ws_details = wb.create_sheet(title="Filtered Meeting Details")
+  df_details_export = df_filtered.copy()
+  if "Date" in df_details_export.columns:
+    df_details_export["Date"] = df_details_export["Date"].astype(str)
+
+  for r in dataframe_to_rows(df_details_export, index=False, header=True):
+    ws_details.append(r)
+
+  # Sheet 3: Original Raw Data (Dữ liệu gốc Activity Detail đầy đủ)
+  ws_raw = wb.create_sheet(title="Original Raw Data")
+  df_raw_export = pd.read_excel("20261029_Activity Detail.xlsx")
+  if "Date" in df_raw_export.columns:
+    df_raw_export["Date"] = df_raw_export["Date"].astype(str)
+
+  for r in dataframe_to_rows(df_raw_export, index=False, header=True):
+    ws_raw.append(r)
+
   output = io.BytesIO()
-  with pd.ExcelWriter(output, engine="openpyxl") as writer:
-    stage_counts.to_excel(writer, sheet_name="Summary Stage", index=False)
-    df_filtered.to_excel(writer, sheet_name="Meeting Details", index=False)
+  wb.save(output)
   excel_data = output.getvalue()
 
   st.download_button(
-      label="📥 Tải Báo Cáo Excel (.xlsx)",
+      label="📥 Tải Báo Cáo Excel Hoàn Chỉnh (.xlsx)",
       data=excel_data,
-      file_name="Sales_Meeting_Report.xlsx",
+      file_name="Sales_Meeting_Report_Complete.xlsx",
       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   )
 
