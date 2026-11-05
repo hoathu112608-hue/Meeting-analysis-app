@@ -39,10 +39,9 @@ STAGE_COLS_DIDW = [
 ]
 
 
-@st.cache_data
-def process_data(file_act_path, file_didw_path):
-  df_act = pd.read_excel(file_act_path)
-  df_didw = pd.read_excel(file_didw_path)
+def process_data(file_act, file_didw):
+  df_act = pd.read_excel(file_act)
+  df_didw = pd.read_excel(file_didw)
 
   df_act.columns = [c.strip(".").strip() for c in df_act.columns]
   df_didw.columns = [c.strip(".").strip() for c in df_didw.columns]
@@ -110,11 +109,24 @@ def process_data(file_act_path, file_didw_path):
   return df_act_clean, df_didw
 
 
-try:
-  df_processed, df_didw_raw = process_data(
-      "20261029_Activity Detail.xlsx", "DIDW_12T (38).xlsx"
-  )
+st.sidebar.header("📁 Upload Raw Data")
+uploaded_act = st.sidebar.file_uploader(
+    "Upload Activity Detail (.xlsx)", type=["xlsx"]
+)
+uploaded_didw = st.sidebar.file_uploader("Upload DIDW (.xlsx)", type=["xlsx"])
 
+# Sử dụng file mặc định trong repo nếu người dùng chưa upload file mới
+default_act = (
+    uploaded_act if uploaded_act is not None else "20261029_Activity Detail.xlsx"
+)
+default_didw = (
+    uploaded_didw if uploaded_didw is not None else "DIDW_12T (38).xlsx"
+)
+
+try:
+  df_processed, df_didw_raw = process_data(default_act, default_didw)
+
+  st.sidebar.markdown("---")
   st.sidebar.header("🔍 Filters")
 
   sales_list = ["All"] + sorted(
@@ -148,7 +160,6 @@ try:
   start_date = st.sidebar.date_input("Start Date", value=min_date)
   end_date = st.sidebar.date_input("End Date", value=max_date)
 
-  # Lọc dữ liệu trực tiếp theo thời gian thực không cần nút bấm
   df_filtered = df_processed.copy()
   if selected_sales != "All":
     df_filtered = df_filtered[df_filtered["Sales Member"] == selected_sales]
@@ -240,7 +251,7 @@ try:
     ws_details.append(r)
 
   ws_raw = wb.create_sheet(title="Original Raw Data")
-  df_raw_export = pd.read_excel("20261029_Activity Detail.xlsx")
+  df_raw_export = pd.read_excel(default_act)
   if "Date" in df_raw_export.columns:
     df_raw_export["Date"] = df_raw_export["Date"].astype(str)
 
@@ -259,4 +270,7 @@ try:
   )
 
 except Exception as e:
-  st.error(f"Error reading data files: {e}")
+  st.warning(
+      "⚠️ Vui lòng upload đầy đủ cả 2 file Excel (`Activity Detail` và `DIDW`)"
+      f" hoặc kiểm tra lại định dạng file. Lỗi chi tiết: {e}"
+  )
