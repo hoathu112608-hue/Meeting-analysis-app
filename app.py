@@ -107,43 +107,49 @@ def process_data(file_act_path, file_didw_path):
   return df_act_clean, df_didw
 
 
-# Đọc file mặc định có sẵn trong repo GitHub
 try:
   df_processed, df_didw_raw = process_data(
       "20261029_Activity Detail.xlsx", "DIDW_12T (38).xlsx"
   )
 
-  st.sidebar.header("🔍 Bộ lọc & Tùy chọn (Filters)")
+  st.sidebar.header("🔍 Bộ lọc tương tác (Filters)")
 
-  # Sử dụng Form kèm nút OK để người dùng chủ động bấm lọc
-  with st.sidebar.form("filter_form"):
-    sales_list = ["All"] + sorted(
-        df_processed["Sales Member"].dropna().unique().tolist()
-    )
-    selected_sales = st.selectbox("Sales Member", sales_list)
+  # 1. Bộ lọc Sales Member đầu tiên
+  sales_list = ["All"] + sorted(
+      df_processed["Sales Member"].dropna().unique().tolist()
+  )
+  selected_sales = st.sidebar.selectbox("Sales Member", sales_list)
 
-    region_list = ["All"] + sorted(
-        df_processed["Region"].dropna().unique().tolist()
-    )
-    selected_region = st.selectbox("Region", region_list)
+  # Thu hẹp Region theo Sales Member được chọn
+  df_temp_region = df_processed.copy()
+  if selected_sales != "All":
+    df_temp_region = df_temp_region[
+        df_temp_region["Sales Member"] == selected_sales
+    ]
+  region_list = ["All"] + sorted(
+      df_temp_region["Region"].dropna().unique().tolist()
+  )
+  selected_region = st.sidebar.selectbox("Region", region_list)
 
-    pjt_list = ["All"] + sorted(
-        df_processed["Project Name"].dropna().unique().tolist()
-    )
-    selected_pjt = st.selectbox("Project Name", pjt_list)
+  # Thu hẹp Project Name theo Sales & Region được chọn
+  df_temp_pjt = df_temp_region.copy()
+  if selected_region != "All":
+    df_temp_pjt = df_temp_pjt[df_temp_pjt["Region"] == selected_region]
+  pjt_list = ["All"] + sorted(
+      df_temp_pjt["Project Name"].dropna().unique().tolist()
+  )
+  selected_pjt = st.sidebar.selectbox("Project Name", pjt_list)
 
-    min_date = df_processed["Date"].min().date()
-    max_date = df_processed["Date"].max().date()
+  # Bộ lọc Khoảng thời gian
+  min_date = df_processed["Date"].min().date()
+  max_date = df_processed["Date"].max().date()
 
-    st.markdown("---")
-    st.markdown("📅 **Khoảng thời gian (Period)**")
-    start_date = st.date_input("Từ ngày", value=min_date)
-    end_date = st.date_input("Đến ngày", value=max_date)
+  st.sidebar.markdown("---")
+  st.sidebar.markdown("📅 **Khoảng thời gian (Period)**")
+  start_date = st.sidebar.date_input("Từ ngày", value=min_date)
+  end_date = st.sidebar.date_input("Đến ngày", value=max_date)
 
-    # Nút OK / Áp dụng bộ lọc
-    submitted = st.form_submit_button("✅ OK - Áp dụng Báo cáo")
-
-  # Lọc dữ liệu theo form
+  # Áp dụng bộ lọc cuối cùng
   df_filtered = df_processed.copy()
   if selected_sales != "All":
     df_filtered = df_filtered[df_filtered["Sales Member"] == selected_sales]
@@ -209,7 +215,4 @@ try:
   )
 
 except Exception as e:
-  st.error(
-      f"Lỗi khi đọc file dữ liệu: {e}. Vui lòng kiểm tra lại tên file trong"
-      " repository GitHub."
-  )
+  st.error(f"Lỗi khi đọc file dữ liệu: {e}")
