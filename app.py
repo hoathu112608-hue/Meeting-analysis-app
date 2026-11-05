@@ -112,44 +112,47 @@ try:
       "20261029_Activity Detail.xlsx", "DIDW_12T (38).xlsx"
   )
 
-  st.sidebar.header("🔍 Bộ lọc tương tác (Filters)")
+  st.sidebar.header("🔍 Bộ lọc (Filters)")
 
-  # 1. Bộ lọc Sales Member đầu tiên
-  sales_list = ["All"] + sorted(
-      df_processed["Sales Member"].dropna().unique().tolist()
-  )
-  selected_sales = st.sidebar.selectbox("Sales Member", sales_list)
+  # Sử dụng Form để đóng gói bộ lọc kèm nút OK
+  with st.sidebar.form("filter_form"):
+    sales_list = ["All"] + sorted(
+        df_processed["Sales Member"].dropna().unique().tolist()
+    )
+    selected_sales = st.selectbox("Sales Member", sales_list)
 
-  # Thu hẹp Region theo Sales Member được chọn
-  df_temp_region = df_processed.copy()
-  if selected_sales != "All":
-    df_temp_region = df_temp_region[
-        df_temp_region["Sales Member"] == selected_sales
-    ]
-  region_list = ["All"] + sorted(
-      df_temp_region["Region"].dropna().unique().tolist()
-  )
-  selected_region = st.sidebar.selectbox("Region", region_list)
+    # Lọc danh sách Region tương ứng với Sales được chọn ngay trong form
+    df_temp_region = df_processed.copy()
+    if selected_sales != "All":
+      df_temp_region = df_temp_region[
+          df_temp_region["Sales Member"] == selected_sales
+      ]
+    region_list = ["All"] + sorted(
+        df_temp_region["Region"].dropna().unique().tolist()
+    )
+    selected_region = st.selectbox("Region", region_list)
 
-  # Thu hẹp Project Name theo Sales & Region được chọn
-  df_temp_pjt = df_temp_region.copy()
-  if selected_region != "All":
-    df_temp_pjt = df_temp_pjt[df_temp_pjt["Region"] == selected_region]
-  pjt_list = ["All"] + sorted(
-      df_temp_pjt["Project Name"].dropna().unique().tolist()
-  )
-  selected_pjt = st.sidebar.selectbox("Project Name", pjt_list)
+    # Lọc danh sách Project Name tương ứng với Region & Sales
+    df_temp_pjt = df_temp_region.copy()
+    if selected_region != "All":
+      df_temp_pjt = df_temp_pjt[df_temp_pjt["Region"] == selected_region]
+    pjt_list = ["All"] + sorted(
+        df_temp_pjt["Project Name"].dropna().unique().tolist()
+    )
+    selected_pjt = st.selectbox("Project Name", pjt_list)
 
-  # Bộ lọc Khoảng thời gian
-  min_date = df_processed["Date"].min().date()
-  max_date = df_processed["Date"].max().date()
+    min_date = df_processed["Date"].min().date()
+    max_date = df_processed["Date"].max().date()
 
-  st.sidebar.markdown("---")
-  st.sidebar.markdown("📅 **Khoảng thời gian (Period)**")
-  start_date = st.sidebar.date_input("Từ ngày", value=min_date)
-  end_date = st.sidebar.date_input("Đến ngày", value=max_date)
+    st.markdown("---")
+    st.markdown("📅 **Khoảng thời gian (Period)**")
+    start_date = st.date_input("Từ ngày", value=min_date)
+    end_date = st.date_input("Đến ngày", value=max_date)
 
-  # Áp dụng bộ lọc cuối cùng
+    # Nút OK xác nhận áp dụng bộ lọc
+    submitted = st.form_submit_button("✅ OK - Áp dụng Báo cáo")
+
+  # Xử lý lọc dữ liệu chính thức sau khi bấm nút OK
   df_filtered = df_processed.copy()
   if selected_sales != "All":
     df_filtered = df_filtered[df_filtered["Sales Member"] == selected_sales]
