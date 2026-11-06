@@ -123,45 +123,55 @@ default_didw = (
 )
 
 try:
-  df_temp_full, df_didw_raw = process_data(default_act, default_didw)
+  df_processed, df_didw_raw = process_data(default_act, default_didw)
 
   st.sidebar.markdown("---")
   st.sidebar.header("🔍 Filters")
 
+  # 1. Chọn Sales Member
   sales_list = ["All"] + sorted(
-      df_temp_full["Sales Member"].dropna().unique().tolist()
+      df_processed["Sales Member"].dropna().unique().tolist()
   )
   selected_sales = st.sidebar.selectbox("Sales Member", sales_list)
 
+  # Đồng bộ Region theo Sales Member được chọn
+  df_temp_region = df_processed.copy()
+  if selected_sales != "All":
+    df_temp_region = df_temp_region[
+        df_temp_region["Sales Member"] == selected_sales
+    ]
   region_list = ["All"] + sorted(
-      df_temp_full["Region"].dropna().unique().tolist()
+      df_temp_region["Region"].dropna().unique().tolist()
   )
   selected_region = st.sidebar.selectbox("Region", region_list)
 
+  # Đồng bộ Project Name theo Sales & Region được chọn
+  df_temp_pjt = df_temp_region.copy()
+  if selected_region != "All":
+    df_temp_pjt = df_temp_pjt[df_temp_pjt["Region"] == selected_region]
   pjt_list = ["All"] + sorted(
-      df_temp_full["Project Name"].dropna().unique().tolist()
+      df_temp_pjt["Project Name"].dropna().unique().tolist()
   )
   selected_pjt = st.sidebar.selectbox("Project Name", pjt_list)
 
-  min_date = df_temp_full["Date"].min().date()
-  max_date = df_temp_full["Date"].max().date()
+  min_date = df_processed["Date"].min().date()
+  max_date = df_processed["Date"].max().date()
 
   st.sidebar.markdown("---")
   st.sidebar.markdown("📅 **Period**")
   start_date = st.sidebar.date_input("Start Date", value=min_date)
   end_date = st.sidebar.date_input("End Date", value=max_date)
 
-  # Khởi tạo trạng thái ban đầu cho nút OK
+  # Khởi tạo trạng thái nút OK
   if "submitted" not in st.session_state:
     st.session_state.submitted = False
 
-  # Nút OK điều khiển trạng thái
   if st.sidebar.button("✅ OK - Apply Report", type="primary"):
     st.session_state.submitted = True
 
-  # CHỈ KHI NÀO BẤM NÚT OK THÌ APP MỚI TIẾN HÀNH LỌC VÀ HIỂN THỊ DỮ LIỆU
+  # CHỈ KHI BẤM NÚT OK THÌ MỚI CHẠY BÁO CÁO
   if st.session_state.submitted:
-    df_filtered = df_temp_full.copy()
+    df_filtered = df_processed.copy()
     if selected_sales != "All":
       df_filtered = df_filtered[df_filtered["Sales Member"] == selected_sales]
     if selected_region != "All":
@@ -273,8 +283,9 @@ try:
     )
   else:
     st.info(
-        "👆 Vui lòng chọn các bộ lọc ở menu bên trái và bấm nút **✅ OK - Apply"
-        " Report** để hiển thị báo cáo."
+        "👆 Vui lòng chọn các bộ lọc (Region và Project Name sẽ tự động đồng bộ"
+        " theo Sales Member) và bấm nút **✅ OK - Apply Report** để xem kết"
+        " quả."
     )
 
 except Exception as e:
