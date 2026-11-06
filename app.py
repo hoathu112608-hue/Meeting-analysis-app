@@ -115,7 +115,6 @@ uploaded_act = st.sidebar.file_uploader(
 )
 uploaded_didw = st.sidebar.file_uploader("Upload DIDW (.xlsx)", type=["xlsx"])
 
-# Sử dụng file mặc định trong repo nếu người dùng chưa upload file mới
 default_act = (
     uploaded_act if uploaded_act is not None else "20261029_Activity Detail.xlsx"
 )
@@ -211,7 +210,7 @@ try:
   st.subheader("📋 Detailed Data Table")
   st.dataframe(df_filtered, use_container_width=True)
 
-  # --- EXCEL EXPORT ---
+  # --- EXCEL EXPORT OPTIMIZED ---
   wb = openpyxl.Workbook()
 
   ws_summary = wb.active
@@ -238,8 +237,9 @@ try:
   chart.set_categories(cats_ref)
   chart.legend = None
 
-  chart.height = 12
-  chart.width = 20
+  # Mở rộng kích thước biểu đồ để hiển thị rõ tên các stage ở trục hoành và tiêu đề trục tung
+  chart.height = 14
+  chart.width = 24
   ws_summary.add_chart(chart, "D2")
 
   ws_details = wb.create_sheet(title="Filtered Meeting Details")
