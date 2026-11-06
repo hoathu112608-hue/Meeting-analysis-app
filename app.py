@@ -123,149 +123,159 @@ default_didw = (
 )
 
 try:
-  # Đọc dữ liệu thô ban đầu để lấy danh sách bộ lọc
   df_temp_full, df_didw_raw = process_data(default_act, default_didw)
 
   st.sidebar.markdown("---")
   st.sidebar.header("🔍 Filters")
 
-  # Sử dụng Form để gom nhóm bộ lọc và thêm nút OK
-  with st.sidebar.form("filter_form"):
-    sales_list = ["All"] + sorted(
-        df_temp_full["Sales Member"].dropna().unique().tolist()
-    )
-    selected_sales = st.selectbox("Sales Member", sales_list)
+  sales_list = ["All"] + sorted(
+      df_temp_full["Sales Member"].dropna().unique().tolist()
+  )
+  selected_sales = st.sidebar.selectbox("Sales Member", sales_list)
 
-    region_list = ["All"] + sorted(
-        df_temp_full["Region"].dropna().unique().tolist()
-    )
-    selected_region = st.selectbox("Region", region_list)
+  region_list = ["All"] + sorted(
+      df_temp_full["Region"].dropna().unique().tolist()
+  )
+  selected_region = st.sidebar.selectbox("Region", region_list)
 
-    pjt_list = ["All"] + sorted(
-        df_temp_full["Project Name"].dropna().unique().tolist()
-    )
-    selected_pjt = st.selectbox("Project Name", pjt_list)
+  pjt_list = ["All"] + sorted(
+      df_temp_full["Project Name"].dropna().unique().tolist()
+  )
+  selected_pjt = st.sidebar.selectbox("Project Name", pjt_list)
 
-    min_date = df_temp_full["Date"].min().date()
-    max_date = df_temp_full["Date"].max().date()
+  min_date = df_temp_full["Date"].min().date()
+  max_date = df_temp_full["Date"].max().date()
+
+  st.sidebar.markdown("---")
+  st.sidebar.markdown("📅 **Period**")
+  start_date = st.sidebar.date_input("Start Date", value=min_date)
+  end_date = st.sidebar.date_input("End Date", value=max_date)
+
+  # Khởi tạo trạng thái ban đầu cho nút OK
+  if "submitted" not in st.session_state:
+    st.session_state.submitted = False
+
+  # Nút OK điều khiển trạng thái
+  if st.sidebar.button("✅ OK - Apply Report", type="primary"):
+    st.session_state.submitted = True
+
+  # CHỈ KHI NÀO BẤM NÚT OK THÌ APP MỚI TIẾN HÀNH LỌC VÀ HIỂN THỊ DỮ LIỆU
+  if st.session_state.submitted:
+    df_filtered = df_temp_full.copy()
+    if selected_sales != "All":
+      df_filtered = df_filtered[df_filtered["Sales Member"] == selected_sales]
+    if selected_region != "All":
+      df_filtered = df_filtered[df_filtered["Region"] == selected_region]
+    if selected_pjt != "All":
+      df_filtered = df_filtered[df_filtered["Project Name"] == selected_pjt]
+
+    if start_date and end_date:
+      df_filtered = df_filtered[
+          (df_filtered["Date"].dt.date >= start_date)
+          & (df_filtered["Date"].dt.date <= end_date)
+      ]
+
+    # --- MAIN DASHBOARD ---
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Filtered Meetings", len(df_filtered))
+    col2.metric("Participating Sales", df_filtered["Sales Member"].nunique())
+    col3.metric("Total Projects", df_filtered["Project Name"].nunique())
 
     st.markdown("---")
-    st.markdown("📅 **Period**")
-    start_date = st.date_input("Start Date", value=min_date)
-    end_date = st.date_input("End Date", value=max_date)
+    st.subheader("📈 Meeting Frequency by Project Stage")
 
-    # Nút OK xác nhận load báo cáo
-    submitted = st.form_submit_button("✅ OK - Apply Report", type="primary")
+    categories_order = STAGES + ["Non-Relevant"]
+    stage_counts = (
+        df_filtered["Assigned_Stage"]
+        .value_counts()
+        .reindex(categories_order, fill_value=0)
+        .reset_index()
+    )
+    stage_counts.columns = ["Stage", "Meeting Count"]
 
-  # Dữ liệu được lọc chính thức sau khi bấm nút OK
-  df_filtered = df_temp_full.copy()
-  if selected_sales != "All":
-    df_filtered = df_filtered[df_filtered["Sales Member"] == selected_sales]
-  if selected_region != "All":
-    df_filtered = df_filtered[df_filtered["Region"] == selected_region]
-  if selected_pjt != "All":
-    df_filtered = df_filtered[df_filtered["Project Name"] == selected_pjt]
+    fig = px.bar(
+        stage_counts,
+        x="Stage",
+        y="Meeting Count",
+        text="Meeting Count",
+        color="Stage",
+        color_discrete_map={"Non-Relevant": "#EF553B"},
+    )
+    fig.update_traces(textposition="outside")
+    fig.update_layout(
+        xaxis_title="Project Stage",
+        yaxis_title="Meeting Count",
+        showlegend=False,
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
-  if start_date and end_date:
-    df_filtered = df_filtered[
-        (df_filtered["Date"].dt.date >= start_date)
-        & (df_filtered["Date"].dt.date <= end_date)
-    ]
+    st.subheader("📋 Detailed Data Table")
+    st.dataframe(df_filtered, use_container_width=True)
 
-  # --- MAIN DASHBOARD ---
-  col1, col2, col3 = st.columns(3)
-  col1.metric("Total Filtered Meetings", len(df_filtered))
-  col2.metric("Participating Sales", df_filtered["Sales Member"].nunique())
-  col3.metric("Total Projects", df_filtered["Project Name"].nunique())
+    # --- EXCEL EXPORT OPTIMIZED ---
+    wb = openpyxl.Workbook()
 
-  st.markdown("---")
-  st.subheader("📈 Meeting Frequency by Project Stage")
+    ws_summary = wb.active
+    ws_summary.title = "Summary & Chart"
 
-  categories_order = STAGES + ["Non-Relevant"]
-  stage_counts = (
-      df_filtered["Assigned_Stage"]
-      .value_counts()
-      .reindex(categories_order, fill_value=0)
-      .reset_index()
-  )
-  stage_counts.columns = ["Stage", "Meeting Count"]
+    for r in dataframe_to_rows(stage_counts, index=False, header=True):
+      ws_summary.append(r)
 
-  fig = px.bar(
-      stage_counts,
-      x="Stage",
-      y="Meeting Count",
-      text="Meeting Count",
-      color="Stage",
-      color_discrete_map={"Non-Relevant": "#EF553B"},
-  )
-  fig.update_traces(textposition="outside")
-  fig.update_layout(
-      xaxis_title="Project Stage",
-      yaxis_title="Meeting Count",
-      showlegend=False,
-  )
-  st.plotly_chart(fig, use_container_width=True)
+    chart = BarChart()
+    chart.type = "col"
+    chart.style = 10
+    chart.title = "Sales Meeting Frequency by Project Stage"
+    chart.y_axis.title = "Meeting Count"
+    chart.x_axis.title = "Project Stage"
 
-  st.subheader("📋 Detailed Data Table")
-  st.dataframe(df_filtered, use_container_width=True)
+    data_ref = Reference(
+        ws_summary, min_col=2, min_row=1, max_row=len(stage_counts) + 1
+    )
+    cats_ref = Reference(
+        ws_summary, min_col=1, min_row=2, max_row=len(stage_counts) + 1
+    )
 
-  # --- EXCEL EXPORT OPTIMIZED ---
-  wb = openpyxl.Workbook()
+    chart.add_data(data_ref, titles_from_data=True)
+    chart.set_categories(cats_ref)
+    chart.legend = None
 
-  ws_summary = wb.active
-  ws_summary.title = "Summary & Chart"
+    chart.height = 14
+    chart.width = 24
+    ws_summary.add_chart(chart, "D2")
 
-  for r in dataframe_to_rows(stage_counts, index=False, header=True):
-    ws_summary.append(r)
+    ws_details = wb.create_sheet(title="Filtered Meeting Details")
+    df_details_export = df_filtered.copy()
+    if "Date" in df_details_export.columns:
+      df_details_export["Date"] = df_details_export["Date"].astype(str)
 
-  chart = BarChart()
-  chart.type = "col"
-  chart.style = 10
-  chart.title = "Sales Meeting Frequency by Project Stage"
-  chart.y_axis.title = "Meeting Count"
-  chart.x_axis.title = "Project Stage"
+    for r in dataframe_to_rows(df_details_export, index=False, header=True):
+      ws_details.append(r)
 
-  data_ref = Reference(
-      ws_summary, min_col=2, min_row=1, max_row=len(stage_counts) + 1
-  )
-  cats_ref = Reference(
-      ws_summary, min_col=1, min_row=2, max_row=len(stage_counts) + 1
-  )
+    ws_raw = wb.create_sheet(title="Original Raw Data")
+    df_raw_export = pd.read_excel(default_act)
+    if "Date" in df_raw_export.columns:
+      df_raw_export["Date"] = df_raw_export["Date"].astype(str)
 
-  chart.add_data(data_ref, titles_from_data=True)
-  chart.set_categories(cats_ref)
-  chart.legend = None
+    for r in dataframe_to_rows(df_raw_export, index=False, header=True):
+      ws_raw.append(r)
 
-  chart.height = 14
-  chart.width = 24
-  ws_summary.add_chart(chart, "D2")
+    output = io.BytesIO()
+    wb.save(output)
+    excel_data = output.getvalue()
 
-  ws_details = wb.create_sheet(title="Filtered Meeting Details")
-  df_details_export = df_filtered.copy()
-  if "Date" in df_details_export.columns:
-    df_details_export["Date"] = df_details_export["Date"].astype(str)
-
-  for r in dataframe_to_rows(df_details_export, index=False, header=True):
-    ws_details.append(r)
-
-  ws_raw = wb.create_sheet(title="Original Raw Data")
-  df_raw_export = pd.read_excel(default_act)
-  if "Date" in df_raw_export.columns:
-    df_raw_export["Date"] = df_raw_export["Date"].astype(str)
-
-  for r in dataframe_to_rows(df_raw_export, index=False, header=True):
-    ws_raw.append(r)
-
-  output = io.BytesIO()
-  wb.save(output)
-  excel_data = output.getvalue()
-
-  st.download_button(
-      label="📥 Download Complete Report (.xlsx)",
-      data=excel_data,
-      file_name="Meeting_Analysis_Report.xlsx",
-      mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  )
+    st.download_button(
+        label="📥 Download Complete Report (.xlsx)",
+        data=excel_data,
+        file_name="Meeting_Analysis_Report.xlsx",
+        mime=(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ),
+    )
+  else:
+    st.info(
+        "👆 Vui lòng chọn các bộ lọc ở menu bên trái và bấm nút **✅ OK - Apply"
+        " Report** để hiển thị báo cáo."
+    )
 
 except Exception as e:
   st.warning(
