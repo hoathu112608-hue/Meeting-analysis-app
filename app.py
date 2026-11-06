@@ -123,43 +123,42 @@ default_didw = (
 )
 
 try:
-  df_processed, df_didw_raw = process_data(default_act, default_didw)
+  # Đọc dữ liệu thô ban đầu để lấy danh sách bộ lọc
+  df_temp_full, df_didw_raw = process_data(default_act, default_didw)
 
   st.sidebar.markdown("---")
   st.sidebar.header("🔍 Filters")
 
-  sales_list = ["All"] + sorted(
-      df_processed["Sales Member"].dropna().unique().tolist()
-  )
-  selected_sales = st.sidebar.selectbox("Sales Member", sales_list)
+  # Sử dụng Form để gom nhóm bộ lọc và thêm nút OK
+  with st.sidebar.form("filter_form"):
+    sales_list = ["All"] + sorted(
+        df_temp_full["Sales Member"].dropna().unique().tolist()
+    )
+    selected_sales = st.selectbox("Sales Member", sales_list)
 
-  df_temp_region = df_processed.copy()
-  if selected_sales != "All":
-    df_temp_region = df_temp_region[
-        df_temp_region["Sales Member"] == selected_sales
-    ]
-  region_list = ["All"] + sorted(
-      df_temp_region["Region"].dropna().unique().tolist()
-  )
-  selected_region = st.sidebar.selectbox("Region", region_list)
+    region_list = ["All"] + sorted(
+        df_temp_full["Region"].dropna().unique().tolist()
+    )
+    selected_region = st.selectbox("Region", region_list)
 
-  df_temp_pjt = df_temp_region.copy()
-  if selected_region != "All":
-    df_temp_pjt = df_temp_pjt[df_temp_pjt["Region"] == selected_region]
-  pjt_list = ["All"] + sorted(
-      df_temp_pjt["Project Name"].dropna().unique().tolist()
-  )
-  selected_pjt = st.sidebar.selectbox("Project Name", pjt_list)
+    pjt_list = ["All"] + sorted(
+        df_temp_full["Project Name"].dropna().unique().tolist()
+    )
+    selected_pjt = st.selectbox("Project Name", pjt_list)
 
-  min_date = df_processed["Date"].min().date()
-  max_date = df_processed["Date"].max().date()
+    min_date = df_temp_full["Date"].min().date()
+    max_date = df_temp_full["Date"].max().date()
 
-  st.sidebar.markdown("---")
-  st.sidebar.markdown("📅 **Period**")
-  start_date = st.sidebar.date_input("Start Date", value=min_date)
-  end_date = st.sidebar.date_input("End Date", value=max_date)
+    st.markdown("---")
+    st.markdown("📅 **Period**")
+    start_date = st.date_input("Start Date", value=min_date)
+    end_date = st.date_input("End Date", value=max_date)
 
-  df_filtered = df_processed.copy()
+    # Nút OK xác nhận load báo cáo
+    submitted = st.form_submit_button("✅ OK - Apply Report", type="primary")
+
+  # Dữ liệu được lọc chính thức sau khi bấm nút OK
+  df_filtered = df_temp_full.copy()
   if selected_sales != "All":
     df_filtered = df_filtered[df_filtered["Sales Member"] == selected_sales]
   if selected_region != "All":
@@ -237,7 +236,6 @@ try:
   chart.set_categories(cats_ref)
   chart.legend = None
 
-  # Mở rộng kích thước biểu đồ để hiển thị rõ tên các stage ở trục hoành và tiêu đề trục tung
   chart.height = 14
   chart.width = 24
   ws_summary.add_chart(chart, "D2")
