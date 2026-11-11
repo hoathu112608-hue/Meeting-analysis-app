@@ -410,3 +410,25 @@ try:
       ws_raw.append(r)
 
     output = io.BytesIO()
+    wb.save(output)
+    excel_data = output.getvalue()
+
+    st.download_button(
+        label="📥 Download Complete Report (.xlsx)",
+        data=excel_data,
+        file_name="Meeting_Meal_Analysis_Report_LT.xlsx",
+        mime=(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ),
+    )
+  else:
+    st.info(
+        "👆 Vui lòng upload file raw data, tùy chỉnh các bộ lọc và bấm nút **✅"
+        " OK - Apply Report** để hiển thị toàn bộ báo cáo."
+    )
+
+except Exception as e:
+  st.warning(
+      "⚠️ Vui lòng upload đầy đủ cả 2 file Excel (`Activity Detail` và `DIDW`)"
+      f" hoặc kiểm tra lại định dạng file. Lỗi chi tiết: {e}"
+  )
