@@ -356,7 +356,7 @@ try:
     st.subheader("📋 Detailed Data Table")
     st.dataframe(df_filtered, use_container_width=True)
 
-    # --- EXCEL EXPORT CHUYÊN NGHIỆP: FORMAT BIỂU ĐỒ ĐẸP VÀ HIỂN THỊ SỐ LIỆU ---
+    # --- EXCEL EXPORT CHUYÊN NGHIỆP: CLEAN DATA LABELS ---
     wb = openpyxl.Workbook()
 
     # Sheet 1: Global Summary & Chart
@@ -367,14 +367,16 @@ try:
 
     chart_global = BarChart()
     chart_global.type = "col"
-    chart_global.style = 2  # Style chuyên nghiệp hơn
+    chart_global.style = 10
     chart_global.title = "Global Overview: Meeting & Meal by Stage"
     chart_global.y_axis.title = "Count"
     chart_global.x_axis.title = "Project Stage"
 
-    # TỰ ĐỘNG BẬT HIỂN THỊ SỐ LIỆU TRÊN CỘT (DATA LABELS)
+    # Chỉ hiển thị số giá trị trên cột, tắt các tên phụ để biểu đồ gọn gàng
     chart_global.dataLabels = openpyxl.chart.label.DataLabelList()
     chart_global.dataLabels.showVal = True
+    chart_global.dataLabels.showCatName = False
+    chart_global.dataLabels.showSerName = False
 
     data_ref_g = Reference(
         ws_global, min_col=2, min_row=1, max_row=len(df_global_plot) + 1, max_col=3
@@ -401,13 +403,15 @@ try:
 
         chart_r = BarChart()
         chart_r.type = "col"
-        chart_r.style = 2
+        chart_r.style = 10
         chart_r.title = f"Region: {reg}"
         chart_r.y_axis.title = "Count"
         chart_r.x_axis.title = "Project Stage"
 
         chart_r.dataLabels = openpyxl.chart.label.DataLabelList()
         chart_r.dataLabels.showVal = True
+        chart_r.dataLabels.showCatName = False
+        chart_r.dataLabels.showSerName = False
 
         start_r = curr_row - len(df_r_plot) - 1
         data_ref_r = Reference(
@@ -436,13 +440,15 @@ try:
 
         chart_s = BarChart()
         chart_s.type = "col"
-        chart_s.style = 2
+        chart_s.style = 10
         chart_s.title = f"Sales: {sales_m}"
         chart_s.y_axis.title = "Count"
         chart_s.x_axis.title = "Project Stage"
 
         chart_s.dataLabels = openpyxl.chart.label.DataLabelList()
         chart_s.dataLabels.showVal = True
+        chart_s.dataLabels.showCatName = False
+        chart_s.dataLabels.showSerName = False
 
         start_s = curr_row_s - len(df_s_plot) - 1
         data_ref_s = Reference(
