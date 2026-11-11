@@ -75,10 +75,7 @@ def process_data(file_act, file_didw):
     if col in df_didw.columns:
       df_didw[col] = pd.to_datetime(df_didw[col], errors="coerce")
 
-  # Tối ưu hóa tốc độ: Lập chỉ mục (index) và tối ưu dò tìm dự án/khách hàng thay vì vòng lặp kép
   assigned_stages = []
-
-  # Chuẩn bị sẵn dictionary tra cứu DIDW theo (Sales Member, Project Name) và (Sales Member, Customer Name)
   didw_pjt_dict = {}
   didw_cust_dict = {}
 
@@ -87,7 +84,6 @@ def process_data(file_act, file_didw):
     pjt = didw_row.get("Project Name")
     cust = didw_row.get("Customer Name")
 
-    # Thu thập các mốc ngày của các stage
     stages_dates = []
     for s_name, col in zip(STAGES, STAGE_COLS_DIDW):
       d = didw_row.get(col)
@@ -236,11 +232,15 @@ try:
 
     fig_global = px.bar(
         df_global_plot,
-        x="Stage",
+        x="Assigned_Stage",  # Đã sửa lại đúng tên cột
         y=["Meeting", "Meal"],
         barmode="group",
         text_auto=True,
-        labels={"value": "Count", "variable": "Activity Type"},
+        labels={
+            "Assigned_Stage": "Project Stage",
+            "value": "Count",
+            "variable": "Activity Type",
+        },
         color_discrete_map={"Meeting": "#636EFA", "Meal": "#EF553B"},
     )
     fig_global.update_layout(
