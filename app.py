@@ -232,7 +232,7 @@ try:
 
     fig_global = px.bar(
         df_global_plot,
-        x="Assigned_Stage",  # Đã sửa lại đúng tên cột
+        x="Assigned_Stage",
         y=["Meeting", "Meal"],
         barmode="group",
         text_auto=True,
@@ -250,59 +250,91 @@ try:
     )
     st.plotly_chart(fig_global, use_container_width=True)
 
-    # 2. Breakdown by Region
-    st.subheader("🌍 Breakdown by Region")
-    df_region_grouped = (
-        df_filtered.groupby(["Region", "Assigned_Stage", "Activity_Category"])
-        .size()
-        .reset_index(name="Count")
-    )
-    if not df_region_grouped.empty:
-      fig_region = px.bar(
-          df_region_grouped,
-          x="Assigned_Stage",
-          y="Count",
-          color="Activity_Category",
-          barmode="group",
-          facet_col="Region",
-          category_orders={"Assigned_Stage": categories_order},
-          text="Count",
-      )
-      fig_region.update_layout(
-          xaxis_title="Project Stage", yaxis_title="Count"
-      )
-      st.plotly_chart(fig_region, use_container_width=True)
-    else:
-      st.info("No data available for Region breakdown with current filters.")
-
-    # 3. Breakdown by Sales Member
-    st.subheader("👤 Breakdown by Sales Member")
-    df_sales_grouped = (
-        df_filtered.groupby(
-            ["Sales Member", "Assigned_Stage", "Activity_Category"]
+    # 2. Breakdown by Region (Mỗi Region 1 biểu đồ riêng biệt)
+    st.subheader("🌍 Breakdown by Region (Individual Charts)")
+    regions = sorted(df_filtered["Region"].dropna().unique().tolist())
+    if regions:
+      for reg in regions:
+        st.markdown(f"**Region: {reg}**")
+        df_reg = df_filtered[df_filtered["Region"] == reg]
+        df_reg_grouped = (
+            df_reg.groupby(["Assigned_Stage", "Activity_Category"])
+            .size()
+            .unstack(fill_value=0)
         )
-        .size()
-        .reset_index(name="Count")
-    )
-    if not df_sales_grouped.empty:
-      fig_sales = px.bar(
-          df_sales_grouped,
-          x="Assigned_Stage",
-          y="Count",
-          color="Activity_Category",
-          barmode="group",
-          facet_row="Sales Member",
-          category_orders={"Assigned_Stage": categories_order},
-          text="Count",
-      )
-      fig_sales.update_layout(
-          xaxis_title="Project Stage", yaxis_title="Count"
-      )
-      st.plotly_chart(fig_sales, use_container_width=True)
+        for col_name in ["Meeting", "Meal"]:
+          if col_name not in df_reg_grouped.columns:
+            df_reg_grouped[col_name] = 0
+        df_reg_grouped = df_reg_grouped[["Meeting", "Meal"]].reindex(
+            categories_order, fill_value=0
+        )
+        df_reg_plot = df_reg_grouped.reset_index()
+
+        fig_reg = px.bar(
+            df_reg_plot,
+            x="Assigned_Stage",
+            y=["Meeting", "Meal"],
+            barmode="group",
+            text_auto=True,
+            labels={
+                "Assigned_Stage": "Project Stage",
+                "value": "Count",
+                "variable": "Activity Type",
+            },
+            color_discrete_map={"Meeting": "#636EFA", "Meal": "#EF553B"},
+        )
+        fig_reg.update_layout(
+            xaxis_title="Project Stage",
+            yaxis_title="Count",
+            legend_title="Activity Type",
+            height=350,
+        )
+        st.plotly_chart(fig_reg, use_container_width=True)
     else:
-      st.info(
-          "No data available for Sales Member breakdown with current filters."
-      )
+      st.info("No region data available.")
+
+    # 3. Breakdown by Sales Member (Mỗi Sales 1 biểu đồ riêng biệt)
+    st.subheader("👤 Breakdown by Sales Member (Individual Charts)")
+    sales_members = sorted(df_filtered["Sales Member"].dropna().unique().tolist())
+    if sales_members:
+      for sales_m in sales_members:
+        st.markdown(f"**Sales Member: {sales_m}**")
+        df_s = df_filtered[df_filtered["Sales Member"] == sales_m]
+        df_s_grouped = (
+            df_s.groupby(["Assigned_Stage", "Activity_Category"])
+            .size()
+            .unstack(fill_value=0)
+        )
+        for col_name in ["Meeting", "Meal"]:
+          if col_name not in df_s_grouped.columns:
+            df_s_grouped[col_name] = 0
+        df_s_grouped = df_s_grouped[["Meeting", "Meal"]].reindex(
+            categories_order, fill_value=0
+        )
+        df_s_plot = df_s_grouped.reset_index()
+
+        fig_s = px.bar(
+            df_s_plot,
+            x="Assigned_Stage",
+            y=["Meeting", "Meal"],
+            barmode="group",
+            text_auto=True,
+            labels={
+                "Assigned_Stage": "Project Stage",
+                "value": "Count",
+                "variable": "Activity Type",
+            },
+            color_discrete_map={"Meeting": "#636EFA", "Meal": "#EF553B"},
+        )
+        fig_s.update_layout(
+            xaxis_title="Project Stage",
+            yaxis_title="Count",
+            legend_title="Activity Type",
+            height=320,
+        )
+        st.plotly_chart(fig_s, use_container_width=True)
+    else:
+      st.info("No sales member data available.")
 
     st.markdown("---")
     st.subheader("📋 Detailed Data Table")
