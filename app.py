@@ -262,6 +262,7 @@ try:
     # 2. Breakdown by Region
     st.subheader("🌍 Breakdown by Region (LT)")
     regions = sorted(df_filtered["Region"].dropna().unique().tolist())
+    region_data_dict = {}
     if regions:
       for reg in regions:
         st.markdown(f"**Region: {reg}**")
@@ -278,6 +279,7 @@ try:
             categories_order, fill_value=0
         )
         df_reg_plot = df_reg_grouped.reset_index()
+        region_data_dict[reg] = df_reg_plot
 
         fig_reg = px.bar(
             df_reg_plot,
@@ -307,6 +309,7 @@ try:
     # 3. Breakdown by Sales Member
     st.subheader("👤 Breakdown by Sales Member (LT)")
     sales_members = sorted(df_filtered["Sales Member"].dropna().unique().tolist())
+    sales_data_dict = {}
     if sales_members:
       for sales_m in sales_members:
         st.markdown(f"**Sales Member: {sales_m}**")
@@ -323,6 +326,7 @@ try:
             categories_order, fill_value=0
         )
         df_s_plot = df_s_grouped.reset_index()
+        sales_data_dict[sales_m] = df_s_plot
 
         fig_s = px.bar(
             df_s_plot,
@@ -353,59 +357,108 @@ try:
     st.subheader("📋 Detailed Data Table")
     st.dataframe(df_filtered, use_container_width=True)
 
-    # --- EXCEL EXPORT ---
+    # --- EXCEL EXPORT CHUYÊN NGHIỆP: NHÚNG TOÀN BỘ BIỂU ĐỒ ---
     wb = openpyxl.Workbook()
 
-    ws_summary = wb.active
-    ws_summary.title = "Summary & Chart"
+    # Sheet 1: Global Summary & Chart
+    ws_global = wb.active
+    ws_global.title = "Global Summary"
+    for r in dataframe_to_rows(df_global_plot, index=False, header=True):
+      ws_global.append(r)
 
-    summary_export_df = df_global_plot.copy()
-    for r in dataframe_to_rows(
-        summary_export_df, index=False, header=True
-    ):
-      ws_summary.append(r)
-
-    chart = BarChart()
-    chart.type = "col"
-    chart.style = 10
-    chart.title = "Meeting & Meal Frequency by Project Stage (LT)"
-    chart.y_axis.title = "Count"
-    chart.x_axis.title = "Project Stage"
-
-    data_ref = Reference(
-        ws_summary,
-        min_col=2,
-        min_row=1,
-        max_row=len(summary_export_df) + 1,
-        max_col=3,
+    chart_global = BarChart()
+    chart_global.type = "col"
+    chart_global.style = 10
+    chart_global.title = "Global Overview: Meeting & Meal by Stage"
+    chart_global.y_axis.title = "Count"
+    chart_global.x_axis.title = "Project Stage"
+    data_ref_g = Reference(
+        ws_global, min_col=2, min_row=1, max_row=len(df_global_plot) + 1, max_col=3
     )
-    cats_ref = Reference(
-        ws_summary,
-        min_col=1,
-        min_row=2,
-        max_row=len(summary_export_df) + 1,
+    cats_ref_g = Reference(
+        ws_global, min_col=1, min_row=2, max_row=len(df_global_plot) + 1
     )
+    chart_global.add_data(data_ref_g, titles_from_data=True)
+    chart_global.set_categories(cats_ref_g)
+    chart_global.height = 14
+    chart_global.width = 24
+    ws_global.add_chart(chart_global, "E2")
 
-    chart.add_data(data_ref, titles_from_data=True)
-    chart.set_categories(cats_ref)
+    # Sheet 2: Region Summaries & Charts
+    if region_data_dict:
+      ws_region = wb.create_sheet(title="Region Breakdown")
+      curr_row = 1
+      for reg, df_r_plot in region_data_dict.items():
+        ws_region.cell(row=curr_row, column=1, value=f"Region: {reg}")
+        curr_row += 1
+        for r in dataframe_to_rows(df_r_plot, index=False, header=True):
+          ws_region.append(r)
+          curr_row += 1
 
-    chart.height = 14
-    chart.width = 24
-    ws_summary.add_chart(chart, "E2")
+        chart_r = BarChart()
+        chart_r.type = "col"
+        chart_r.style = 10
+        chart_r.title = f"Region: {reg}"
+        chart_r.y_axis.title = "Count"
+        chart_r.x_axis.title = "Project Stage"
+        start_r = curr_row - len(df_r_plot) - 1
+        data_ref_r = Reference(
+            ws_region, min_col=2, min_row=start_r, max_row=curr_row - 1, max_col=3
+        )
+        cats_ref_r = Reference(
+            ws_region, min_col=1, min_row=start_r + 1, max_row=curr_row - 1
+        )
+        chart_r.add_data(data_ref_r, titles_from_data=True)
+        chart_r.set_categories(cats_ref_r)
+        chart_r.height = 10
+        chart_r.width = 18
+        ws_region.add_chart(chart_r, f"E{start_r}")
+        curr_row += 3  # Khoảng cách trống giữa các biểu đồ region
 
+    # Sheet 3: Sales Summaries & Charts
+    if sales_data_dict:
+      ws_sales = wb.create_sheet(title="Sales Breakdown")
+      curr_row_s = 1
+      for sales_m, df_s_plot in sales_data_dict.items():
+        ws_sales.cell(row=curr_row_s, column=1, value=f"Sales Member: {sales_m}")
+        curr_row_s += 1
+        for r in dataframe_to_rows(df_s_plot, index=False, header=True):
+          ws_sales.append(r)
+          curr_row_s += 1
+
+        chart_s = BarChart()
+        chart_s.type = "col"
+        chart_s.style = 10
+        chart_s.title = f"Sales: {sales_m}"
+        chart_s.y_axis.title = "Count"
+        chart_s.x_axis.title = "Project Stage"
+        start_s = curr_row_s - len(df_s_plot) - 1
+        data_ref_s = Reference(
+            ws_sales, min_col=2, min_row=start_s, max_row=curr_row_s - 1, max_col=3
+        )
+        cats_ref_s = Reference(
+            ws_sales, min_col=1, min_row=start_s + 1, max_row=curr_row_s - 1
+        )
+        chart_s.add_data(data_ref_s, titles_from_data=True)
+        chart_s.set_categories(cats_ref_s)
+        chart_s.height = 10
+        chart_s.width = 18
+        ws_sales.add_chart(chart_s, f"E{start_s}")
+        curr_row_s += 3
+
+    # Sheet 4: Filtered Details
     ws_details = wb.create_sheet(title="Filtered Details")
     df_details_export = df_filtered.copy()
     if "Date" in df_details_export.columns:
       df_details_export["Date"] = df_details_export["Date"].astype(str)
-
     for r in dataframe_to_rows(df_details_export, index=False, header=True):
       ws_details.append(r)
 
+    # Sheet 5: Original Raw Data
     ws_raw = wb.create_sheet(title="Original Raw Data")
     df_raw_export = pd.read_excel(default_act)
     if "Date" in df_raw_export.columns:
       df_raw_export["Date"] = df_raw_export["Date"].astype(str)
-
     for r in dataframe_to_rows(df_raw_export, index=False, header=True):
       ws_raw.append(r)
 
@@ -416,7 +469,7 @@ try:
     st.download_button(
         label="📥 Download Complete Report (.xlsx)",
         data=excel_data,
-        file_name="Meeting_Meal_Analysis_Report_LT.xlsx",
+        file_name="Meeting_Meal_Full_Charts_Report.xlsx",
         mime=(
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         ),
