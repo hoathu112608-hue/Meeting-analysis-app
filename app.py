@@ -42,6 +42,7 @@ STAGE_COLS_DIDW = [
 ]
 
 
+@st.cache_data
 def process_data(file_act, file_didw):
   df_act = pd.read_excel(file_act)
   df_didw = pd.read_excel(file_didw)
@@ -49,7 +50,6 @@ def process_data(file_act, file_didw):
   df_act.columns = [c.strip(".").strip() for c in df_act.columns]
   df_didw.columns = [c.strip(".").strip() for c in df_didw.columns]
 
-  # Phân loại rõ Meeting và Meal theo yêu cầu mới
   meeting_types = ["meeting", "meeting(on-line)", "meeting online"]
   meal_types = ["meal"]
   valid_types = meeting_types + meal_types
@@ -61,7 +61,6 @@ def process_data(file_act, file_didw):
       df_act_clean["Date"], errors="coerce"
   )
 
-  # Gắn nhãn phân loại Activity Category (Meeting vs Meal)
   def get_act_category(t):
     t_str = str(t).lower().strip()
     if t_str in meal_types:
@@ -76,39 +75,50 @@ def process_data(file_act, file_didw):
     if col in df_didw.columns:
       df_didw[col] = pd.to_datetime(df_didw[col], errors="coerce")
 
+  # Tối ưu hóa tốc độ: Lập chỉ mục (index) và tối ưu dò tìm dự án/khách hàng thay vì vòng lặp kép
   assigned_stages = []
 
-  for _, act_row in df_act_clean.iterrows():
-    sales = act_row.get("Sales Member")
-    cust = act_row.get("Customer")
-    pjt = act_row.get("Project Name")
-    act_date = act_row["Date"]
+  # Chuẩn bị sẵn dictionary tra cứu DIDW theo (Sales Member, Project Name) và (Sales Member, Customer Name)
+  didw_pjt_dict = {}
+  didw_cust_dict = {}
 
-    matched_didw = pd.DataFrame()
-    if pd.notna(pjt):
-      matched_didw = df_didw[
-          (df_didw["Sales Member"] == sales)
-          & (df_didw["Project Name"] == pjt)
-      ]
-    if matched_didw.empty and pd.notna(cust):
-      matched_didw = df_didw[
-          (df_didw["Sales Member"] == sales) & (df_didw["Customer Name"] == cust)
-      ]
+  for _, didw_row in df_didw.iterrows():
+    sales = didw_row.get("Sales Member")
+    pjt = didw_row.get("Project Name")
+    cust = didw_row.get("Customer Name")
+
+    # Thu thập các mốc ngày của các stage
+    stages_dates = []
+    for s_name, col in zip(STAGES, STAGE_COLS_DIDW):
+      d = didw_row.get(col)
+      if pd.notna(d):
+        stages_dates.append((s_name, pd.to_datetime(d)))
+
+    if not stages_dates:
+      continue
+
+    item = {"stages": stages_dates}
+    if pd.notna(sales) and pd.notna(pjt):
+      didw_pjt_dict[(str(sales).strip(), str(pjt).strip())] = item
+    if pd.notna(sales) and pd.notna(cust):
+      if (str(sales).strip(), str(cust).strip()) not in didw_cust_dict:
+        didw_cust_dict[(str(sales).strip(), str(cust).strip())] = item
+
+  for _, act_row in df_act_clean.iterrows():
+    sales = str(act_row.get("Sales Member")).strip()
+    cust = str(act_row.get("Customer")).strip()
+    pjt = str(act_row.get("Project Name")).strip()
+    act_date = act_row["Date"]
 
     assigned_stage = "Non-Relevant"
 
-    if not matched_didw.empty and pd.notna(act_date):
-      for _, didw_row in matched_didw.iterrows():
-        dates = []
-        for name, col in zip(STAGES, STAGE_COLS_DIDW):
-          d = didw_row.get(col)
-          if pd.notna(d):
-            dates.append((name, d))
+    if pd.notna(act_date):
+      matched_item = didw_pjt_dict.get((sales, pjt))
+      if not matched_item:
+        matched_item = didw_cust_dict.get((sales, cust))
 
-        if not dates:
-          continue
-
-        found = False
+      if matched_item:
+        dates = matched_item["stages"]
         for i in range(len(dates)):
           s_name, s_date = dates[i]
           next_date = dates[i + 1][1] if i + 1 < len(dates) else None
@@ -116,10 +126,7 @@ def process_data(file_act, file_didw):
           if s_date <= act_date:
             if next_date is None or act_date < next_date:
               assigned_stage = s_name
-              found = True
               break
-        if found:
-          break
 
     assigned_stages.append(assigned_stage)
 
@@ -134,10 +141,12 @@ uploaded_act = st.sidebar.file_uploader(
 uploaded_didw = st.sidebar.file_uploader("Upload DIDW (.xlsx)", type=["xlsx"])
 
 default_act = (
-    uploaded_act if uploaded_act is not None else "20261029_Activity Detail.xlsx"
+    uploaded_act
+    if uploaded_act is not None
+    else "20261106_Activity Detail(Attendee included).xlsx"
 )
 default_didw = (
-    uploaded_didw if uploaded_didw is not None else "DIDW_12T (38).xlsx"
+    uploaded_didw if uploaded_didw is not None else "DIDW_12T (41).xlsx"
 )
 
 try:
@@ -208,7 +217,7 @@ try:
 
     categories_order = STAGES + ["Non-Relevant"]
 
-    # 1. Biểu đồ tổng quan toàn cầu (LT / All Region) - Tách Meeting và Meal
+    # 1. Global Overview (LT / All Region)
     st.subheader(
         "📈 Global Overview: Meeting & Meal Frequency by Project Stage (LT)"
     )
@@ -241,7 +250,7 @@ try:
     )
     st.plotly_chart(fig_global, use_container_width=True)
 
-    # 2. Biểu đồ phân theo từng Region
+    # 2. Breakdown by Region
     st.subheader("🌍 Breakdown by Region")
     df_region_grouped = (
         df_filtered.groupby(["Region", "Assigned_Stage", "Activity_Category"])
@@ -256,7 +265,7 @@ try:
           color="Activity_Category",
           barmode="group",
           facet_col="Region",
-          category_orders={"Stage": categories_order},
+          category_orders={"Assigned_Stage": categories_order},
           text="Count",
       )
       fig_region.update_layout(
@@ -266,7 +275,7 @@ try:
     else:
       st.info("No data available for Region breakdown with current filters.")
 
-    # 3. Biểu đồ phân theo từng Sales Member
+    # 3. Breakdown by Sales Member
     st.subheader("👤 Breakdown by Sales Member")
     df_sales_grouped = (
         df_filtered.groupby(
@@ -283,7 +292,7 @@ try:
           color="Activity_Category",
           barmode="group",
           facet_row="Sales Member",
-          category_orders={"Stage": categories_order},
+          category_orders={"Assigned_Stage": categories_order},
           text="Count",
       )
       fig_sales.update_layout(
@@ -369,8 +378,8 @@ try:
     )
   else:
     st.info(
-        "👆 Vui lòng upload file raw data, chọn các bộ lọc mong muốn và bấm nút"
-        " **✅ OK - Apply Report** để hiển thị toàn bộ báo cáo."
+        "👆 Vui lòng upload file raw data, tùy chỉnh các bộ lọc và bấm nút **✅"
+        " OK - Apply Report** để hiển thị toàn bộ báo cáo."
     )
 
 except Exception as e:
