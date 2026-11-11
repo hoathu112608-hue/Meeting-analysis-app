@@ -42,14 +42,16 @@ STAGE_COLS_DIDW = [
 ]
 
 
+# --- BƯỚC QUAN TRỌNG: GẮN @st.cache_data ĐỂ TĂNG TỐC ĐỘ ---
+@st.cache_data
 def process_data(file_act, file_didw):
+  # Đọc file Excel trực tiếp
   df_act = pd.read_excel(file_act)
   df_didw = pd.read_excel(file_didw)
 
   df_act.columns = [c.strip(".").strip() for c in df_act.columns]
   df_didw.columns = [c.strip(".").strip() for c in df_didw.columns]
 
-  # Phân loại Meeting và Meal
   meeting_types = ["meeting", "meeting(on-line)", "meeting online"]
   meal_types = ["meal"]
   valid_types = meeting_types + meal_types
@@ -142,18 +144,17 @@ default_didw = (
 )
 
 try:
+  # Gọi hàm đã được cache dữ liệu
   df_processed, df_didw_raw = process_data(default_act, default_didw)
 
   st.sidebar.markdown("---")
   st.sidebar.header("🔍 Filters")
 
-  # 1. Chọn Sales Member
   sales_list = ["All"] + sorted(
       df_processed["Sales Member"].dropna().unique().tolist()
   )
   selected_sales = st.sidebar.selectbox("Sales Member", sales_list)
 
-  # Đồng bộ Region theo Sales Member được chọn
   df_temp_region = df_processed.copy()
   if selected_sales != "All":
     df_temp_region = df_temp_region[
@@ -164,7 +165,6 @@ try:
   )
   selected_region = st.sidebar.selectbox("Region", region_list)
 
-  # Đồng bộ Project Name theo Sales & Region được chọn
   df_temp_pjt = df_temp_region.copy()
   if selected_region != "All":
     df_temp_pjt = df_temp_pjt[df_temp_pjt["Region"] == selected_region]
@@ -373,9 +373,8 @@ try:
     )
   else:
     st.info(
-        "👆 Vui lòng upload file raw data (hoặc dùng file mặc định), tùy chỉnh"
-        " các bộ lọc và bấm nút **✅ OK - Apply Report** để hiển thị toàn bộ"
-        " báo cáo."
+        "👆 Vui lòng upload file raw data, tùy chỉnh các bộ lọc và bấm nút **✅"
+        " OK - Apply Report** để hiển thị toàn bộ báo cáo."
     )
 
 except Exception as e:
