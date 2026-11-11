@@ -50,14 +50,13 @@ def process_data(file_act, file_didw):
   df_act.columns = [c.strip(".").strip() for c in df_act.columns]
   df_didw.columns = [c.strip(".").strip() for c in df_didw.columns]
 
-  # --- LỌC RIÊNG DIVISION LT ---
+  # Lọc riêng Division LT
   if "Sector" in df_act.columns:
     df_act = df_act[df_act["Sector"].astype(str).str.upper() == "LT"]
 
   if "Sector" in df_didw.columns:
     df_didw = df_didw[df_didw["Sector"].astype(str).str.upper() == "LT"]
   elif "Div" in df_didw.columns:
-    # Nếu file DIDW dùng cột Div để phân loại LT
     df_didw = df_didw[df_didw["Div"].astype(str).str.upper().str.contains("LT")]
 
   meeting_types = ["meeting", "meeting(on-line)", "meeting online"]
@@ -400,4 +399,14 @@ try:
       df_details_export["Date"] = df_details_export["Date"].astype(str)
 
     for r in dataframe_to_rows(df_details_export, index=False, header=True):
-      ws_details.append
+      ws_details.append(r)
+
+    ws_raw = wb.create_sheet(title="Original Raw Data")
+    df_raw_export = pd.read_excel(default_act)
+    if "Date" in df_raw_export.columns:
+      df_raw_export["Date"] = df_raw_export["Date"].astype(str)
+
+    for r in dataframe_to_rows(df_raw_export, index=False, header=True):
+      ws_raw.append(r)
+
+    output = io.BytesIO()
