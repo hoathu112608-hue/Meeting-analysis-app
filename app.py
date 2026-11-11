@@ -50,7 +50,6 @@ def process_data(file_act, file_didw):
   df_act.columns = [c.strip(".").strip() for c in df_act.columns]
   df_didw.columns = [c.strip(".").strip() for c in df_didw.columns]
 
-  # Lọc riêng Division LT
   if "Sector" in df_act.columns:
     df_act = df_act[df_act["Sector"].astype(str).str.upper() == "LT"]
 
@@ -357,7 +356,7 @@ try:
     st.subheader("📋 Detailed Data Table")
     st.dataframe(df_filtered, use_container_width=True)
 
-    # --- EXCEL EXPORT CHUYÊN NGHIỆP: NHÚNG TOÀN BỘ BIỂU ĐỒ ---
+    # --- EXCEL EXPORT CHUYÊN NGHIỆP: FORMAT BIỂU ĐỒ ĐẸP VÀ HIỂN THỊ SỐ LIỆU ---
     wb = openpyxl.Workbook()
 
     # Sheet 1: Global Summary & Chart
@@ -368,10 +367,15 @@ try:
 
     chart_global = BarChart()
     chart_global.type = "col"
-    chart_global.style = 10
+    chart_global.style = 2  # Style chuyên nghiệp hơn
     chart_global.title = "Global Overview: Meeting & Meal by Stage"
     chart_global.y_axis.title = "Count"
     chart_global.x_axis.title = "Project Stage"
+
+    # TỰ ĐỘNG BẬT HIỂN THỊ SỐ LIỆU TRÊN CỘT (DATA LABELS)
+    chart_global.dataLabels = openpyxl.chart.label.DataLabelList()
+    chart_global.dataLabels.showVal = True
+
     data_ref_g = Reference(
         ws_global, min_col=2, min_row=1, max_row=len(df_global_plot) + 1, max_col=3
     )
@@ -380,8 +384,8 @@ try:
     )
     chart_global.add_data(data_ref_g, titles_from_data=True)
     chart_global.set_categories(cats_ref_g)
-    chart_global.height = 14
-    chart_global.width = 24
+    chart_global.height = 16
+    chart_global.width = 28
     ws_global.add_chart(chart_global, "E2")
 
     # Sheet 2: Region Summaries & Charts
@@ -397,10 +401,14 @@ try:
 
         chart_r = BarChart()
         chart_r.type = "col"
-        chart_r.style = 10
+        chart_r.style = 2
         chart_r.title = f"Region: {reg}"
         chart_r.y_axis.title = "Count"
         chart_r.x_axis.title = "Project Stage"
+
+        chart_r.dataLabels = openpyxl.chart.label.DataLabelList()
+        chart_r.dataLabels.showVal = True
+
         start_r = curr_row - len(df_r_plot) - 1
         data_ref_r = Reference(
             ws_region, min_col=2, min_row=start_r, max_row=curr_row - 1, max_col=3
@@ -410,10 +418,10 @@ try:
         )
         chart_r.add_data(data_ref_r, titles_from_data=True)
         chart_r.set_categories(cats_ref_r)
-        chart_r.height = 10
-        chart_r.width = 18
+        chart_r.height = 12
+        chart_r.width = 20
         ws_region.add_chart(chart_r, f"E{start_r}")
-        curr_row += 3  # Khoảng cách trống giữa các biểu đồ region
+        curr_row += 4
 
     # Sheet 3: Sales Summaries & Charts
     if sales_data_dict:
@@ -428,10 +436,14 @@ try:
 
         chart_s = BarChart()
         chart_s.type = "col"
-        chart_s.style = 10
+        chart_s.style = 2
         chart_s.title = f"Sales: {sales_m}"
         chart_s.y_axis.title = "Count"
         chart_s.x_axis.title = "Project Stage"
+
+        chart_s.dataLabels = openpyxl.chart.label.DataLabelList()
+        chart_s.dataLabels.showVal = True
+
         start_s = curr_row_s - len(df_s_plot) - 1
         data_ref_s = Reference(
             ws_sales, min_col=2, min_row=start_s, max_row=curr_row_s - 1, max_col=3
@@ -441,10 +453,10 @@ try:
         )
         chart_s.add_data(data_ref_s, titles_from_data=True)
         chart_s.set_categories(cats_ref_s)
-        chart_s.height = 10
-        chart_s.width = 18
+        chart_s.height = 12
+        chart_s.width = 20
         ws_sales.add_chart(chart_s, f"E{start_s}")
-        curr_row_s += 3
+        curr_row_s += 4
 
     # Sheet 4: Filtered Details
     ws_details = wb.create_sheet(title="Filtered Details")
