@@ -248,9 +248,9 @@ try:
         yaxis_title="Count",
         legend_title="Activity Type",
     )
-    st.plotly_chart(fig_global, use_container_width=True)
+    st.plotly_chart(fig_global, use_container_width=True, key="global_chart")
 
-    # 2. Breakdown by Region (Mỗi Region 1 biểu đồ riêng biệt)
+    # 2. Breakdown by Region (Mỗi Region 1 biểu đồ riêng biệt với key độc lập)
     st.subheader("🌍 Breakdown by Region (Individual Charts)")
     regions = sorted(df_filtered["Region"].dropna().unique().tolist())
     if regions:
@@ -289,11 +289,13 @@ try:
             legend_title="Activity Type",
             height=350,
         )
-        st.plotly_chart(fig_reg, use_container_width=True)
+        st.plotly_chart(
+            fig_reg, use_container_width=True, key=f"reg_chart_{reg}"
+        )
     else:
       st.info("No region data available.")
 
-    # 3. Breakdown by Sales Member (Mỗi Sales 1 biểu đồ riêng biệt)
+    # 3. Breakdown by Sales Member (Mỗi Sales 1 biểu đồ riêng biệt với key độc lập)
     st.subheader("👤 Breakdown by Sales Member (Individual Charts)")
     sales_members = sorted(df_filtered["Sales Member"].dropna().unique().tolist())
     if sales_members:
@@ -332,7 +334,9 @@ try:
             legend_title="Activity Type",
             height=320,
         )
-        st.plotly_chart(fig_s, use_container_width=True)
+        st.plotly_chart(
+            fig_s, use_container_width=True, key=f"sales_chart_{sales_m}"
+        )
     else:
       st.info("No sales member data available.")
 
