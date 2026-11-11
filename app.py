@@ -356,7 +356,7 @@ try:
     st.subheader("📋 Detailed Data Table")
     st.dataframe(df_filtered, use_container_width=True)
 
-    # --- EXCEL EXPORT CHUYÊN NGHIỆP: CLEAN DATA LABELS ---
+    # --- EXCEL EXPORT CHUYÊN NGHIỆP: CHỐNG CHỒNG CHÉO BIỂU ĐỒ ---
     wb = openpyxl.Workbook()
 
     # Sheet 1: Global Summary & Chart
@@ -372,7 +372,6 @@ try:
     chart_global.y_axis.title = "Count"
     chart_global.x_axis.title = "Project Stage"
 
-    # Chỉ hiển thị số giá trị trên cột, tắt các tên phụ để biểu đồ gọn gàng
     chart_global.dataLabels = openpyxl.chart.label.DataLabelList()
     chart_global.dataLabels.showVal = True
     chart_global.dataLabels.showCatName = False
@@ -386,20 +385,22 @@ try:
     )
     chart_global.add_data(data_ref_g, titles_from_data=True)
     chart_global.set_categories(cats_ref_g)
-    chart_global.height = 16
-    chart_global.width = 28
-    ws_global.add_chart(chart_global, "E2")
+    chart_global.height = 13
+    chart_global.width = 24
+    ws_global.add_chart(chart_global, "F2")
 
-    # Sheet 2: Region Summaries & Charts
+    # Sheet 2: Region Breakdown (Khoảng cách an toàn chống đè biểu đồ)
     if region_data_dict:
       ws_region = wb.create_sheet(title="Region Breakdown")
       curr_row = 1
       for reg, df_r_plot in region_data_dict.items():
         ws_region.cell(row=curr_row, column=1, value=f"Region: {reg}")
         curr_row += 1
+        table_start_row = curr_row
         for r in dataframe_to_rows(df_r_plot, index=False, header=True):
           ws_region.append(r)
           curr_row += 1
+        table_end_row = curr_row - 1
 
         chart_r = BarChart()
         chart_r.type = "col"
@@ -413,30 +414,40 @@ try:
         chart_r.dataLabels.showCatName = False
         chart_r.dataLabels.showSerName = False
 
-        start_r = curr_row - len(df_r_plot) - 1
         data_ref_r = Reference(
-            ws_region, min_col=2, min_row=start_r, max_row=curr_row - 1, max_col=3
+            ws_region,
+            min_col=2,
+            min_row=table_start_row,
+            max_row=table_end_row,
+            max_col=3,
         )
         cats_ref_r = Reference(
-            ws_region, min_col=1, min_row=start_r + 1, max_row=curr_row - 1
+            ws_region,
+            min_col=1,
+            min_row=table_start_row + 1,
+            max_row=table_end_row,
         )
         chart_r.add_data(data_ref_r, titles_from_data=True)
         chart_r.set_categories(cats_ref_r)
-        chart_r.height = 12
-        chart_r.width = 20
-        ws_region.add_chart(chart_r, f"E{start_r}")
-        curr_row += 4
+        chart_r.height = 11
+        chart_r.width = 22
+        ws_region.add_chart(chart_r, f"F{table_start_row}")
 
-    # Sheet 3: Sales Summaries & Charts
+        # Tăng khoảng cách cách biệt an toàn (22 dòng trống) để các biểu đồ không bao giờ chạm nhau
+        curr_row = table_start_row + 22
+
+    # Sheet 3: Sales Breakdown (Khoảng cách an toàn chống đè biểu đồ)
     if sales_data_dict:
       ws_sales = wb.create_sheet(title="Sales Breakdown")
       curr_row_s = 1
       for sales_m, df_s_plot in sales_data_dict.items():
         ws_sales.cell(row=curr_row_s, column=1, value=f"Sales Member: {sales_m}")
         curr_row_s += 1
+        table_start_s = curr_row_s
         for r in dataframe_to_rows(df_s_plot, index=False, header=True):
           ws_sales.append(r)
           curr_row_s += 1
+        table_end_s = curr_row_s - 1
 
         chart_s = BarChart()
         chart_s.type = "col"
@@ -450,19 +461,27 @@ try:
         chart_s.dataLabels.showCatName = False
         chart_s.dataLabels.showSerName = False
 
-        start_s = curr_row_s - len(df_s_plot) - 1
         data_ref_s = Reference(
-            ws_sales, min_col=2, min_row=start_s, max_row=curr_row_s - 1, max_col=3
+            ws_sales,
+            min_col=2,
+            min_row=table_start_s,
+            max_row=table_end_s,
+            max_col=3,
         )
         cats_ref_s = Reference(
-            ws_sales, min_col=1, min_row=start_s + 1, max_row=curr_row_s - 1
+            ws_sales,
+            min_col=1,
+            min_row=table_start_s + 1,
+            max_row=table_end_s,
         )
         chart_s.add_data(data_ref_s, titles_from_data=True)
         chart_s.set_categories(cats_ref_s)
-        chart_s.height = 12
-        chart_s.width = 20
-        ws_sales.add_chart(chart_s, f"E{start_s}")
-        curr_row_s += 4
+        chart_s.height = 11
+        chart_s.width = 22
+        ws_sales.add_chart(chart_s, f"F{table_start_s}")
+
+        # Tăng khoảng cách cách biệt an toàn (22 dòng trống) cho từng sales
+        curr_row_s = table_start_s + 22
 
     # Sheet 4: Filtered Details
     ws_details = wb.create_sheet(title="Filtered Details")
