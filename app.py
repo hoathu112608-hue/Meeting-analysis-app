@@ -42,16 +42,14 @@ STAGE_COLS_DIDW = [
 ]
 
 
-# --- BƯỚC QUAN TRỌNG: GẮN @st.cache_data ĐỂ TĂNG TỐC ĐỘ ---
-@st.cache_data
 def process_data(file_act, file_didw):
-  # Đọc file Excel trực tiếp
   df_act = pd.read_excel(file_act)
   df_didw = pd.read_excel(file_didw)
 
   df_act.columns = [c.strip(".").strip() for c in df_act.columns]
   df_didw.columns = [c.strip(".").strip() for c in df_didw.columns]
 
+  # Phân loại rõ Meeting và Meal theo yêu cầu mới
   meeting_types = ["meeting", "meeting(on-line)", "meeting online"]
   meal_types = ["meal"]
   valid_types = meeting_types + meal_types
@@ -63,6 +61,7 @@ def process_data(file_act, file_didw):
       df_act_clean["Date"], errors="coerce"
   )
 
+  # Gắn nhãn phân loại Activity Category (Meeting vs Meal)
   def get_act_category(t):
     t_str = str(t).lower().strip()
     if t_str in meal_types:
@@ -135,16 +134,13 @@ uploaded_act = st.sidebar.file_uploader(
 uploaded_didw = st.sidebar.file_uploader("Upload DIDW (.xlsx)", type=["xlsx"])
 
 default_act = (
-    uploaded_act
-    if uploaded_act is not None
-    else "20261106_Activity Detail(Attendee included).xlsx"
+    uploaded_act if uploaded_act is not None else "20261029_Activity Detail.xlsx"
 )
 default_didw = (
-    uploaded_didw if uploaded_didw is not None else "DIDW_12T (41).xlsx"
+    uploaded_didw if uploaded_didw is not None else "DIDW_12T (38).xlsx"
 )
 
 try:
-  # Gọi hàm đã được cache dữ liệu
   df_processed, df_didw_raw = process_data(default_act, default_didw)
 
   st.sidebar.markdown("---")
@@ -212,7 +208,7 @@ try:
 
     categories_order = STAGES + ["Non-Relevant"]
 
-    # 1. Global Overview (LT / All Region)
+    # 1. Biểu đồ tổng quan toàn cầu (LT / All Region) - Tách Meeting và Meal
     st.subheader(
         "📈 Global Overview: Meeting & Meal Frequency by Project Stage (LT)"
     )
@@ -245,7 +241,7 @@ try:
     )
     st.plotly_chart(fig_global, use_container_width=True)
 
-    # 2. Breakdown by Region
+    # 2. Biểu đồ phân theo từng Region
     st.subheader("🌍 Breakdown by Region")
     df_region_grouped = (
         df_filtered.groupby(["Region", "Assigned_Stage", "Activity_Category"])
@@ -260,7 +256,7 @@ try:
           color="Activity_Category",
           barmode="group",
           facet_col="Region",
-          category_orders={"Assigned_Stage": categories_order},
+          category_orders={"Stage": categories_order},
           text="Count",
       )
       fig_region.update_layout(
@@ -270,7 +266,7 @@ try:
     else:
       st.info("No data available for Region breakdown with current filters.")
 
-    # 3. Breakdown by Sales Member
+    # 3. Biểu đồ phân theo từng Sales Member
     st.subheader("👤 Breakdown by Sales Member")
     df_sales_grouped = (
         df_filtered.groupby(
@@ -287,7 +283,7 @@ try:
           color="Activity_Category",
           barmode="group",
           facet_row="Sales Member",
-          category_orders={"Assigned_Stage": categories_order},
+          category_orders={"Stage": categories_order},
           text="Count",
       )
       fig_sales.update_layout(
@@ -373,8 +369,8 @@ try:
     )
   else:
     st.info(
-        "👆 Vui lòng upload file raw data, tùy chỉnh các bộ lọc và bấm nút **✅"
-        " OK - Apply Report** để hiển thị toàn bộ báo cáo."
+        "👆 Vui lòng upload file raw data, chọn các bộ lọc mong muốn và bấm nút"
+        " **✅ OK - Apply Report** để hiển thị toàn bộ báo cáo."
     )
 
 except Exception as e:
