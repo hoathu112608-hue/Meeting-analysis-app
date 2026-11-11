@@ -15,7 +15,7 @@ st.set_page_config(
 st.title("📊 Meeting Analysis App")
 st.markdown(
     "Management and tracking application for sales meeting & meal frequency by"
-    " project stage"
+    " project stage (Division: LT)"
 )
 
 STAGES = [
@@ -49,6 +49,16 @@ def process_data(file_act, file_didw):
 
   df_act.columns = [c.strip(".").strip() for c in df_act.columns]
   df_didw.columns = [c.strip(".").strip() for c in df_didw.columns]
+
+  # --- LỌC RIÊNG DIVISION LT ---
+  if "Sector" in df_act.columns:
+    df_act = df_act[df_act["Sector"].astype(str).str.upper() == "LT"]
+
+  if "Sector" in df_didw.columns:
+    df_didw = df_didw[df_didw["Sector"].astype(str).str.upper() == "LT"]
+  elif "Div" in df_didw.columns:
+    # Nếu file DIDW dùng cột Div để phân loại LT
+    df_didw = df_didw[df_didw["Div"].astype(str).str.upper().str.contains("LT")]
 
   meeting_types = ["meeting", "meeting(on-line)", "meeting online"]
   meal_types = ["meal"]
@@ -205,7 +215,7 @@ try:
 
     # --- MAIN DASHBOARD ---
     col1, col2, col3 = st.columns(3)
-    col1.metric("Total Filtered Activities", len(df_filtered))
+    col1.metric("Total Filtered Activities (LT)", len(df_filtered))
     col2.metric("Participating Sales", df_filtered["Sales Member"].nunique())
     col3.metric("Total Projects", df_filtered["Project Name"].nunique())
 
@@ -250,8 +260,8 @@ try:
     )
     st.plotly_chart(fig_global, use_container_width=True, key="global_chart")
 
-    # 2. Breakdown by Region (Mỗi Region 1 biểu đồ riêng biệt với key độc lập)
-    st.subheader("🌍 Breakdown by Region (Individual Charts)")
+    # 2. Breakdown by Region
+    st.subheader("🌍 Breakdown by Region (LT)")
     regions = sorted(df_filtered["Region"].dropna().unique().tolist())
     if regions:
       for reg in regions:
@@ -295,8 +305,8 @@ try:
     else:
       st.info("No region data available.")
 
-    # 3. Breakdown by Sales Member (Mỗi Sales 1 biểu đồ riêng biệt với key độc lập)
-    st.subheader("👤 Breakdown by Sales Member (Individual Charts)")
+    # 3. Breakdown by Sales Member
+    st.subheader("👤 Breakdown by Sales Member (LT)")
     sales_members = sorted(df_filtered["Sales Member"].dropna().unique().tolist())
     if sales_members:
       for sales_m in sales_members:
@@ -359,7 +369,7 @@ try:
     chart = BarChart()
     chart.type = "col"
     chart.style = 10
-    chart.title = "Meeting & Meal Frequency by Project Stage"
+    chart.title = "Meeting & Meal Frequency by Project Stage (LT)"
     chart.y_axis.title = "Count"
     chart.x_axis.title = "Project Stage"
 
@@ -390,36 +400,4 @@ try:
       df_details_export["Date"] = df_details_export["Date"].astype(str)
 
     for r in dataframe_to_rows(df_details_export, index=False, header=True):
-      ws_details.append(r)
-
-    ws_raw = wb.create_sheet(title="Original Raw Data")
-    df_raw_export = pd.read_excel(default_act)
-    if "Date" in df_raw_export.columns:
-      df_raw_export["Date"] = df_raw_export["Date"].astype(str)
-
-    for r in dataframe_to_rows(df_raw_export, index=False, header=True):
-      ws_raw.append(r)
-
-    output = io.BytesIO()
-    wb.save(output)
-    excel_data = output.getvalue()
-
-    st.download_button(
-        label="📥 Download Complete Report (.xlsx)",
-        data=excel_data,
-        file_name="Meeting_Meal_Analysis_Report.xlsx",
-        mime=(
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        ),
-    )
-  else:
-    st.info(
-        "👆 Vui lòng upload file raw data, tùy chỉnh các bộ lọc và bấm nút **✅"
-        " OK - Apply Report** để hiển thị toàn bộ báo cáo."
-    )
-
-except Exception as e:
-  st.warning(
-      "⚠️ Vui lòng upload đầy đủ cả 2 file Excel (`Activity Detail` và `DIDW`)"
-      f" hoặc kiểm tra lại định dạng file. Lỗi chi tiết: {e}"
-  )
+      ws_details.append
